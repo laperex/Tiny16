@@ -124,6 +124,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
     always @(posedge clk or posedge reset) begin
         if (reset == 1) begin
+			start = 100;
 			finish = 200;
             
 			mem_addr_reg <= 0;
@@ -131,7 +132,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
             for (i = 0; i < 2**(WIDTH - 1); i++)
                 ram[i] = 0;
 			
-			org = 100;
+			org = start;
 
 			ram[0] = org - 1;
 
@@ -159,7 +160,6 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 			ram[org++] = jump; ram[org++] = start - 1;
 
 			ram[finish] = 8'hff;
-			ram[finish + 1] = 4;
 
         end else begin
             if (MI == 1)
