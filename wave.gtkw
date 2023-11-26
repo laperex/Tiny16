@@ -1,0 +1,36 @@
+[*]
+[*] GTKWave Analyzer v3.3.117 (w)1999-2023 BSI
+[*] Sat Nov 25 13:44:20 2023
+[*]
+[dumpfile] "/home/laperex/Programming/C++/Verilog/tiny/testbench.vcd"
+[dumpfile_mtime] "Sat Nov 25 13:43:46 2023"
+[dumpfile_size] 6193
+[savefile] "/home/laperex/Programming/C++/Verilog/tiny/wave.gtkw"
+[timestart] 0
+[size] 2540 1493
+[pos] -1 -1
+*-5.573809 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] testbench.
+[sst_width] 311
+[signals_width] 230
+[sst_expanded] 1
+[sst_vpaned_height] 464
+@28
+testbench.clk
+@25
+testbench.counter[3:0]
+@22
+testbench.decode[14:0]
+@28
+testbench.inst[7:0]
+@22
+testbench.accumulator_bus[7:0]
+testbench.alu_out_bus[7:0]
+@24
+testbench.mar[7:0]
+@22
+testbench.psr_bus[3:0]
+testbench.ram_read_bus[7:0]
+testbench.ram_write_bus[7:0]
+[pattern_trace] 1
+[pattern_trace] 0
