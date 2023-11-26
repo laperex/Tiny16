@@ -25,23 +25,44 @@ module alu16 #(parameter WIDTH = 16) (clk, reset, A, B, E, L, LS, Cn, PI, PS, ps
     assign tE = { 1'b0, lA } + { 1'b0, lB } + (1 & Cn);
     assign E = tE[WIDTH - 1:0];
 
-    always @(posedge clk or posedge reset) begin
+	// assign psr_wire[3] = (E[WIDTH - 1] & ~A[WIDTH - 1] & (lB[WIDTH - 1] == 0)) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1]);
+
+    always @(posedge clk or negedge reset) begin
         if (reset == 1) begin
             psr <= 0;
         end
         else
         if (PI == 1) begin
-            if (PS == 1) begin
-                psr <= tE[3:0];
-            end
-            else begin
-                psr <= {
-					tE[16],
-					tE[WIDTH - 1],
-					tE,
-					(E[WIDTH - 1] & ~A[WIDTH - 1] & ~lB[WIDTH - 1]) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1])
-				};
-            end	
+			psr[0] <= tE[WIDTH];
+			psr[1] <= E[WIDTH - 1];
+			psr[2] <= (E[WIDTH - 1: 0] == 0) ? 1: 0;
+			psr[3] <= 0;
+
+            // if (PS == 1) begin
+            // end
+            // else begin
+            //     psr <= psr_wire;
+            // end
+        end
+    end
+endmodule
+
+
+module sync_mux_2x1 #(parameter WIDTH = 16) (clk, reset, sel, enable, in0, in1, out);
+    input sel, enable, clk, reset;
+    input [WIDTH - 1:0] in0, in1;
+
+    output reg [WIDTH - 1:0] out;
+
+    always @(posedge clk or posedge reset) begin
+        if (reset == 1)
+            out = 0;
+        else
+        if (enable) begin
+            if (sel == 1)
+                out = in1;
+            else
+                out = in0;
         end
     end
 endmodule
@@ -76,10 +97,10 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 	parameter store = 	5'b00010 | abs;
 
-	parameter jump 	= 	5'b00100;
-	parameter jumpz =	5'b00101;
-	parameter jumpc =	5'b00110;
-	parameter jumpn =	5'b00111;
+	parameter jump 	= 	5'b00100 | abs;
+	parameter jumpz =	5'b00101 | abs;
+	parameter jumpc =	5'b00110 | abs;
+	parameter jumpn =	5'b00111 | abs;
 
 	parameter add 	= 	5'b01000;
 	parameter adc 	= 	5'b01001;
@@ -96,9 +117,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 	parameter second = 12;
 	parameter count = 13;
 
-	integer org;
-	
-	integer start, finish;
+	integer org, start, finish;
 
     always @(posedge clk or posedge reset) begin
         if (reset == 1) begin
@@ -113,20 +132,22 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 			ram[first] = 0;
 			ram[second] = 1;
-			ram[count] = 10;
+			ram[count] = 9;
 
 			start = org++;
-			ram[start] = loada;
-			ram[org++] = count;
-			ram[org++] = sub;
-			ram[org++] = 10;
+			ram[start] = loada; ram[org++] = count;
+			ram[org++] = sub; ram[org++] = 10;
+			ram[org++] = sub; ram[org++] = 10;
+			ram[org++] = sub; ram[org++] = 10;
+			ram[org++] = sub; ram[org++] = 10;
+			ram[org++] = store; ram[org++] = count;
+			ram[org++] = suba; ram[org++] = count;
+			ram[org++] = jumpz; ram[org++] = start - 1;
 
 			finish = org++;
 			ram[finish] = 8'hff;
 			ram[org++] = 4;
-        end
-        else
-        begin
+        end else begin
             if (MI == 1)
                 mem_addr_reg <= write;
 
@@ -139,26 +160,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 endmodule
 
 
-module sync_mux_2x1 #(parameter WIDTH = 16) (clk, reset, sel, enable, in0, in1, out);
-    input sel, enable, clk, reset;
-    input [WIDTH - 1:0] in0, in1;
-
-    output reg [WIDTH - 1:0] out;
-
-    always @(posedge clk or posedge reset) begin
-        if (reset == 1)
-            out = 0;
-        else
-        if (enable) begin
-            if (sel == 1)
-                out = in1;
-            else
-                out = in0;
-        end
-    end
-endmodule
-
-module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL, cLS, cII, decode, counter);
+module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL, cLS, cII, decode, counter);
 	// Enable Control Lines
 
     parameter AI = 1 << 0;
@@ -181,38 +183,6 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
     parameter BUF_B = 14'b1010_0000000000;
     parameter NEG_B = 14'b0101_0000000000;
 
-    // parameter NAND = 14'b0111_0000000000 | LS;
-    // parameter AND = 14'b1000_0000000000 | LS;
-    // parameter OR = 14'b1110_0000000000 | LS;
-    // parameter NOR = 14'b0001_0000000000 | LS;
-    // parameter XOR = 14'b0110_0000000000 | LS;
-    // parameter XNOR = 14'b1001_0000000000 | LS;
-
-	// parameter INC_A = BUF_A | Cn | LS;
-	// parameter DEC_A = NEG_A | LS;
-
-	// parameter INC_B = BUF_B | Cn | LS;
-	// parameter DEC_B = NEG_B | LS;
-
-    // parameter ADD = BUF_B;
-	// parameter ADC = BUF_B | Cn;
-	// parameter SUB = NEG_B | Cn;
-	// parameter SBB = NEG_B;
-	
-	// parameter INST_IMM = 1;
-	// parameter INST_ABS = 2;
-	// parameter INST_OFF = 3;
-	
-	// // Instructions
-	// parameter NOP = 8'b0;
-	
-	// parameter INST_TYPE_REG = 0;
-	// parameter INST_TYPE_IMM = 1;
-	// parameter INST_TYPE_ABS = 2;
-	// parameter INST_TYPE_OFF = 3;
-
-	// ALU INT - ADDRESSING_TYPE[2] - INST_TYPE[]
-
 	parameter load 	= 	6'b000001;
 	parameter loadi 	= 	6'b000001;
 
@@ -231,6 +201,7 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
 	input clk;
     input reset;
     input [7:0] inst;
+    input [3:0] psr;
 
     output wire cAI, cAS;
     output wire cPI, cPS;
@@ -260,31 +231,6 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
         if (reset == 1) begin
             counter <= 0;
         end else begin
-			// case (counter)
-			// 	4'h0:
-			// 		decode <= GEN_0 | MI;
-
-			// 	4'h1:
-			// 		decode <= BUF_B | Cn | MI | RI | LS;
-
-			// 	4'h2:
-			// 		decode <= II | GEN_0 | MI;
-
-			// 	4'h3:
-			// 		decode <= BUF_B | Cn | MI | RI | LS;
-
-			// 	4'h4:
-			// 		decode <=
-			// 			TYPE_IMM ? 
-			// 				(opcode == load) ? AI : ((opcode == add) ? BUF_B | AS | AI : 0)
-			// 				// (opcode == add) ? 
-			// 			: 0;
-			// endcase
-
-			// if (counter == 5)
-			// 	counter <= 0;
-			// else
-
 			counter <= counter + 1;
         end
     end
@@ -297,13 +243,19 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
 		counter == 4 ?
 			TYPE_IMM ?
 				opcode == load ? AI:
-				opcode == add ? BUF_B | PI | AS | AI | AS:
-				opcode == addc ? BUF_B | PI | AS | AI | AS | Cn:
-				opcode == subb ? NEG_B | PI | AS | AI | AS:
-				opcode == sub ? NEG_B | PI | AS | AI | AS | Cn:
+
+				opcode == add ? BUF_B | PI | AS | AI:
+				opcode == addc ? BUF_B | PI | AS | AI | Cn:
+				opcode == subb ? NEG_B | PI | AS | AI:
+				opcode == sub ? NEG_B | PI | AS | AI | Cn:
 				0:
 			TYPE_ABS ?
 				opcode == load ? BUF_B | MI | LS:
+
+				opcode == store ? BUF_B | MI | LS:
+
+				((opcode == jump) | ((opcode == jumpz) & (psr[2] == 1))) ? GEN_0 | MI | AI:
+
 				opcode == add ? BUF_B | MI | LS:
 				opcode == addc ? BUF_B | MI | LS:
 				opcode == sub ? BUF_B | MI | LS:
@@ -313,6 +265,11 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
 		counter == 5 ?
 			TYPE_ABS ?
 				opcode == load ? AI:
+
+				opcode == store ? BUF_A | RI | LS:
+
+				((opcode == jump) | ((opcode == jumpz) & (psr[2] == 1))) ? BUF_A | MI | RI | LS:
+				
 				opcode == add ? BUF_B | PI | AS | AI:
 				opcode == addc ? BUF_B | PI | AS | AI | Cn:
 				opcode == subb ? NEG_B | PI | AS | AI:
@@ -371,7 +328,7 @@ module testbench;
 
     wire [15:0] decode;
 	wire [2:0] counter;
-    controlunit cu(clk, reset, inst, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II, decode, counter);
+    controlunit cu(clk, reset, inst, psr_bus, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II, decode, counter);
 
 	always @(posedge clk or negedge reset) begin
 		if (reset == 1)
@@ -399,7 +356,7 @@ module testbench;
     initial begin
         $dumpfile ("testbench.vcd");
         $dumpvars (0, testbench);
-        $monitor ($time, ":\tclk=%B | reset=%B | step=%D | RAM_WRITE=%B:%D | RAM_READ=%B:%D | MAR=%B:%D | REG=%B:%D | decode=%B | Inst=%B", clk, reset, counter, ram_write_bus, ram_write_bus, ram_read_bus, ram_read_bus, mar, mar, accumulator_bus, accumulator_bus, decode, inst);
+        $monitor ($time, ":\tclk=%B | reset=%B | step=%D | RAM_WRITE=%B:%D | RAM_READ=%B:%D | MAR=%B:%D | REG=%B:%D | psr=%B | decode=%B | Inst=%B", clk, reset, counter, ram_write_bus, ram_write_bus, ram_read_bus, ram_read_bus, mar, mar, accumulator_bus, accumulator_bus, psr_bus, decode, inst);
         // $monitor ($time, ":\tclk=%B | A=%B | B=%B | C=%B", clk, a, b, c);
         // #10 MI = 1; RI = 0; ram_write_bus = 1;
         // #20 MI = 1; RI = 0; ram_write_bus = 2;
