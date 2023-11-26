@@ -35,10 +35,12 @@ module alu16 #(parameter WIDTH = 16) (clk, reset, A, B, E, L, LS, Cn, PI, PS, ps
                 psr <= tE[3:0];
             end
             else begin
-                psr[0] <= tE[16];
-                psr[1] <= tE[WIDTH - 1];
-                psr[2] <= (tE == 0) ? 1: 0;
-                psr[3] <= (E[WIDTH - 1] & ~A[WIDTH - 1] & ~lB[WIDTH - 1]) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1]);
+                psr <= {
+					tE[16],
+					tE[WIDTH - 1],
+					tE,
+					(E[WIDTH - 1] & ~A[WIDTH - 1] & ~lB[WIDTH - 1]) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1])
+				};
             end	
         end
     end
@@ -69,34 +71,59 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 	parameter abs = 1 << 6;
 	parameter off = 2 << 6;
 
-	parameter load 	= 	5'b00001;
+	parameter loadi	= 	5'b00001;
+	parameter loada =	loadi | abs;
 
-	parameter store = 	5'b00010;
+	parameter store = 	5'b00010 | abs;
 
 	parameter jump 	= 	5'b00100;
 	parameter jumpz =	5'b00101;
 	parameter jumpc =	5'b00110;
 	parameter jumpn =	5'b00111;
-	
+
 	parameter add 	= 	5'b01000;
-	parameter addc 	= 	5'b01001;
-	parameter subb 	= 	5'b01010;
+	parameter adc 	= 	5'b01001;
+	parameter sbb 	= 	5'b01010;
 	parameter sub 	= 	5'b01011;
+	
+	parameter adda 	= 	add | abs;
+	parameter adca 	= 	adc | abs;
+	parameter sbba 	= 	sbb | abs;
+	parameter suba 	= 	sub | abs;
+		
+	parameter tmp = 10;
+	parameter first = 11;
+	parameter second = 12;
+	parameter count = 13;
+
+	integer org;
+	
+	integer start, finish;
 
     always @(posedge clk or posedge reset) begin
         if (reset == 1) begin
             mem_addr_reg <= 0;
 
-            for (i = 0; i < 2**(WIDTH - 1); i = i + 1)
+            for (i = 0; i < 2**(WIDTH - 1); i++)
                 ram[i] = 0;
-
-			ram[0] = 99;
-
-			ram[100] = 8'h01;
-			ram[101] = 4;
 			
-			ram[102] = 8'hff;
-			ram[103] = 4;
+			org = 100;
+
+			ram[0] = org - 1;
+
+			ram[first] = 0;
+			ram[second] = 1;
+			ram[count] = 10;
+
+			start = org++;
+			ram[start] = loada;
+			ram[org++] = count;
+			ram[org++] = sub;
+			ram[org++] = 10;
+
+			finish = org++;
+			ram[finish] = 8'hff;
+			ram[org++] = 4;
         end
         else
         begin
@@ -149,10 +176,10 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
 
     parameter GEN_0 = 14'b0000_0000000000 | LS;
     parameter GEN_1 = 14'b1111_0000000000 | LS;
-    parameter BUF_A = 14'b1100_0000000000 | LS;
-    parameter NEG_A = 14'b0011_0000000000 | LS;
-    parameter BUF_B = 14'b1010_0000000000 | LS;
-    parameter NEG_B = 14'b0101_0000000000 | LS;
+    parameter BUF_A = 14'b1100_0000000000;
+    parameter NEG_A = 14'b0011_0000000000;
+    parameter BUF_B = 14'b1010_0000000000;
+    parameter NEG_B = 14'b0101_0000000000;
 
     // parameter NAND = 14'b0111_0000000000 | LS;
     // parameter AND = 14'b1000_0000000000 | LS;
@@ -195,7 +222,7 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
 	parameter jumpz =	6'b000101;
 	parameter jumpc =	6'b000110;
 	parameter jumpn =	6'b000111;
-	
+
 	parameter add 	= 	6'b001000;
 	parameter addc 	= 	6'b001001;
 	parameter subb 	= 	6'b001010;
@@ -213,15 +240,15 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
     output wire cLS;
     output wire cII;
     output wire [3:0] cL;
-    
-    output reg [14:0] decode;
-    output reg [3:0] counter;
 
-    reg reset_counter;
-	
+    output [15:0] decode;
+    output reg [2:0] counter;
+
 	wire TYPE_REG, TYPE_IMM, TYPE_ABS, TYPE_OFF;
 	wire [5:0] opcode;
-	
+
+	reg reset_counter;
+
 	assign TYPE_IMM = ~inst[7] & ~inst[6];	// 0
 	assign TYPE_ABS = ~inst[7] & inst[6];	// 1
 	assign TYPE_OFF = inst[7] & ~inst[6];	// 2
@@ -232,46 +259,68 @@ module controlunit(clk, reset, inst, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL,
     always @(negedge clk or posedge reset) begin
         if (reset == 1) begin
             counter <= 0;
-            decode <= 0;
-            reset_counter <= 0;
         end else begin
-			if (reset_counter == 1) begin
-                counter <= 0;
-                decode <= 0;
-                reset_counter <= 0;
-			end else begin				
-				case (counter)
-					4'h0:
-						decode <= GEN_0 | MI;
+			// case (counter)
+			// 	4'h0:
+			// 		decode <= GEN_0 | MI;
 
-					4'h1:
-						decode <= BUF_B | Cn | MI | RI;
+			// 	4'h1:
+			// 		decode <= BUF_B | Cn | MI | RI | LS;
 
-					4'h2:
-						decode <= II | GEN_0 | MI;
+			// 	4'h2:
+			// 		decode <= II | GEN_0 | MI;
 
-					4'h3:
-						decode <= BUF_B | Cn | MI | RI;
+			// 	4'h3:
+			// 		decode <= BUF_B | Cn | MI | RI | LS;
 
-					4'h4: begin
-						reset_counter <= 1;
-					end
-				endcase
+			// 	4'h4:
+			// 		decode <=
+			// 			TYPE_IMM ? 
+			// 				(opcode == load) ? AI : ((opcode == add) ? BUF_B | AS | AI : 0)
+			// 				// (opcode == add) ? 
+			// 			: 0;
+			// endcase
 
-				// if (TYPE_IMM)
-				// 	case (counter)
-				// 		4'h4:
-				// 			decode <= 
-				// 	endcase
+			// if (counter == 5)
+			// 	counter <= 0;
+			// else
 
-				if (reset_counter == 1)
-					counter <= 0;
-				else
-					counter <= counter + 1;
-			end
+			counter <= counter + 1;
         end
     end
-    
+	
+	assign decode =
+		counter == 0 ? GEN_0 | MI:
+		counter == 1 ? BUF_B | Cn | MI | RI | LS:
+		counter == 2 ? II | GEN_0 | MI:
+		counter == 3 ? BUF_B | Cn | MI | RI | LS:
+		counter == 4 ?
+			TYPE_IMM ?
+				opcode == load ? AI:
+				opcode == add ? BUF_B | PI | AS | AI | AS:
+				opcode == addc ? BUF_B | PI | AS | AI | AS | Cn:
+				opcode == subb ? NEG_B | PI | AS | AI | AS:
+				opcode == sub ? NEG_B | PI | AS | AI | AS | Cn:
+				0:
+			TYPE_ABS ?
+				opcode == load ? BUF_B | MI | LS:
+				opcode == add ? BUF_B | MI | LS:
+				opcode == addc ? BUF_B | MI | LS:
+				opcode == sub ? BUF_B | MI | LS:
+				opcode == subb ? BUF_B | MI | LS:
+				0:
+			0:
+		counter == 5 ?
+			TYPE_ABS ?
+				opcode == load ? AI:
+				opcode == add ? BUF_B | PI | AS | AI:
+				opcode == addc ? BUF_B | PI | AS | AI | Cn:
+				opcode == subb ? NEG_B | PI | AS | AI:
+				opcode == sub ? NEG_B | PI | AS | AI | Cn:
+				0:
+			0:
+		0;
+
     assign cAI = decode[0];
     assign cAS = decode[1];
     assign cPI = decode[2];
@@ -319,9 +368,9 @@ module testbench;
     
     wire [WIDTH - 1:0] mar;
     memory #(WIDTH) ram(clk, reset, MI, RI, ram_write_bus, ram_read_bus, mar);
-    
-    wire [14:0] decode;
-	wire [3:0] counter;
+
+    wire [15:0] decode;
+	wire [2:0] counter;
     controlunit cu(clk, reset, inst, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II, decode, counter);
 
 	always @(posedge clk or negedge reset) begin
