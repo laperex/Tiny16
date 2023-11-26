@@ -119,9 +119,14 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 	integer org, start, finish;
 
+	wire [WIDTH - 1:0] display;
+	
+
     always @(posedge clk or posedge reset) begin
         if (reset == 1) begin
-            mem_addr_reg <= 0;
+			finish = 200;
+            
+			mem_addr_reg <= 0;
 
             for (i = 0; i < 2**(WIDTH - 1); i++)
                 ram[i] = 0;
@@ -135,18 +140,27 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 			ram[count] = 9;
 
 			start = org++;
+			
 			ram[start] = loada; ram[org++] = count;
-			ram[org++] = sub; ram[org++] = 10;
-			ram[org++] = sub; ram[org++] = 10;
-			ram[org++] = sub; ram[org++] = 10;
-			ram[org++] = sub; ram[org++] = 10;
+			ram[org++] = sbb; ram[org++] = 0;
 			ram[org++] = store; ram[org++] = count;
-			ram[org++] = suba; ram[org++] = count;
-			ram[org++] = jumpz; ram[org++] = start - 1;
 
-			finish = org++;
+			ram[org++] = jumpz; ram[org++] = finish - 1;
+			
+			ram[org++] = loada; ram[org++] = second;
+			ram[org++] = store; ram[org++] = tmp;
+
+			ram[org++] = adda; ram[org++] = first;
+			ram[org++] = store; ram[org++] = second;
+
+			ram[org++] = loada; ram[org++] = tmp;
+			ram[org++] = store; ram[org++] = first;
+			
+			ram[org++] = jump; ram[org++] = start - 1;
+
 			ram[finish] = 8'hff;
-			ram[org++] = 4;
+			ram[finish + 1] = 4;
+
         end else begin
             if (MI == 1)
                 mem_addr_reg <= write;
@@ -157,6 +171,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
     end
 
     assign read = ram[mem_addr_reg];
+	assign display = ram[first];
 endmodule
 
 
@@ -184,7 +199,7 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
     parameter NEG_B = 14'b0101_0000000000;
 
 	parameter load 	= 	6'b000001;
-	parameter loadi 	= 	6'b000001;
+	parameter loadi = 	6'b000001;
 
 	parameter store = 	6'b000010;
 
@@ -231,7 +246,10 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
         if (reset == 1) begin
             counter <= 0;
         end else begin
-			counter <= counter + 1;
+			if (counter == 5)
+				counter <= 0;
+			else
+				counter <= counter + 1;
         end
     end
 	
@@ -347,7 +365,7 @@ module testbench;
         reset = 1;
 		
         while (~inst) begin
-            #10 clk = ~clk;
+            #1 clk = ~clk;
             if (reset == 1 & clk)
                 reset = 0;
         end
@@ -379,7 +397,7 @@ module testbench;
         // #5 A = 10; B = 0; L = 4'b1010;	// Buff B
         // #5 A = 10; B = 0; L = 4'b0101;	// Neg B
 
-        #2000
+        #20000
         $finish;
     end
 endmodule
