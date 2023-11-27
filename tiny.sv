@@ -77,7 +77,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
     output [WIDTH - 1:0] read;
     
     reg [WIDTH - 1:0] mem_addr_reg;
-    reg [WIDTH - 1:0] ram [2**16-1:0];
+    reg [WIDTH - 1:0] ram [2**WIDTH - 1:0];
     
     integer i;
 
@@ -133,7 +133,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 			ram[first] = 0;
 			ram[second] = 1;
-			ram[count] = 15;
+			ram[count] = 5;
 
 			start = org++;
 
@@ -228,8 +228,6 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	wire TYPE_REG, TYPE_IMM, TYPE_ABS, TYPE_OFF;
 	wire [5:0] opcode;
 
-	reg reset_counter;
-
 	assign TYPE_IMM = ~inst[7] & ~inst[6];	// 0
 	assign TYPE_ABS = ~inst[7] & inst[6];	// 1
 	assign TYPE_OFF = inst[7] & ~inst[6];	// 2
@@ -305,13 +303,7 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
     assign cL = decode[14:10];
 endmodule
 
-module inst_reg();
-	
-endmodule
-
-module testbench;
-	parameter WIDTH = 8;
-
+module processor #(parameter WIDTH = 16)(clk, reset, halt);
     wire [WIDTH - 1:0] mem_input_bus;
     wire [WIDTH - 1:0] accumulator_bus;
     wire [WIDTH - 1:0] ram_read_bus;
@@ -319,8 +311,10 @@ module testbench;
     wire [WIDTH - 1:0] alu_out_bus;
     wire [3:0] psr_bus;
 
-    reg clk;
-    reg reset;
+    input clk;
+    input reset;
+	output halt;
+
     reg [7:0] inst;
 
     wire AI, AS;
@@ -353,28 +347,39 @@ module testbench;
 		else if (II == 1)
 			inst <= ram_read_bus;
 	end
+	
+	assign halt = ~inst;
+endmodule
 
-    always @(posedge reset) begin
-        inst <= 0;
-    end
+module testbench;
+	reg clk;
+	reg reset;
+	wire halt;
+
+	processor #(8) tiny(clk, reset, halt);
 	
     initial begin
-		inst = 0;
         clk = 0;
         reset = 1;
-		
-        while (~inst) begin
+
+        forever begin
             #1 clk = ~clk;
             if (reset == 1 & clk)
                 reset = 0;
         end
     end
+	
+	initial begin
+		if (halt)
+			$finish;
+	end
 
     initial begin
         $dumpfile ("testbench.vcd");
         $dumpvars (0, testbench);
-        $monitor ($time, ":\tclk=%B | reset=%B | step=%D | RAM_WRITE=%B:%D | RAM_READ=%B:%D | MAR=%B:%D | REG=%B:%D | psr=%B | decode=%B | Inst=%B", clk, reset, counter, ram_write_bus, ram_write_bus, ram_read_bus, ram_read_bus, mar, mar, accumulator_bus, accumulator_bus, psr_bus, decode, inst);
+        // $monitor ($time, ":\tclk=%B | reset=%B | step=%D | RAM_WRITE=%B:%D | RAM_READ=%B:%D | MAR=%B:%D | REG=%B:%D | psr=%B | decode=%B | Inst=%B", clk, reset, counter, ram_write_bus, ram_write_bus, ram_read_bus, ram_read_bus, mar, mar, accumulator_bus, accumulator_bus, psr_bus, decode, inst);
         // $monitor ($time, ":\tclk=%B | A=%B | B=%B | C=%B", clk, a, b, c);
+        $monitor ($time, ":\tclk=%B | reset=%B | halt=%B", clk, reset, halt);
         // #10 MI = 1; RI = 0; ram_write_bus = 1;
         // #20 MI = 1; RI = 0; ram_write_bus = 2;
         // #20 MI = 0; RI = 1; ram_write_bus = 3;
