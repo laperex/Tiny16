@@ -83,11 +83,6 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
     assign mar = mem_addr_reg;
 	
-	// assign TYPE_IMM = ~inst[7] & ~inst[6];	// 0
-	// assign TYPE_ABS = ~inst[7] & inst[6];	// 1
-	// assign TYPE_OFF = inst[7] & ~inst[6];	// 2
-	// assign TYPE_REG = inst[7] & inst[6];	// 3
-	
 	parameter imm = 0 << 6;
 	parameter abs = 1 << 6;
 	parameter off = 2 << 6;
@@ -138,10 +133,10 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 			ram[first] = 0;
 			ram[second] = 1;
-			ram[count] = 9;
+			ram[count] = 15;
 
 			start = org++;
-			
+
 			ram[start] = loada; ram[org++] = count;
 			ram[org++] = sbb; ram[org++] = 0;
 			ram[org++] = store; ram[org++] = count;
@@ -189,7 +184,7 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
     parameter LS = 1 << 8;
     parameter II = 1 << 9;
 
-	// ALU Control Liines
+	// ALU Control Lines
 
     parameter GEN_0 = 14'b0000_0000000000 | LS;
     parameter GEN_1 = 14'b1111_0000000000 | LS;
@@ -246,10 +241,7 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
         if (reset == 1) begin
             counter <= 0;
         end else begin
-			if (counter == 5)
-				counter <= 0;
-			else
-				counter <= counter + 1;
+			counter <= counter + 1;
         end
     end
 	
@@ -295,6 +287,10 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 				0:
 			0:
 		0;
+	
+	always @(decode == 0) begin
+		counter <= 0;
+	end
 
     assign cAI = decode[0];
     assign cAS = decode[1];
@@ -309,6 +305,9 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
     assign cL = decode[14:10];
 endmodule
 
+module inst_reg();
+	
+endmodule
 
 module testbench;
 	parameter WIDTH = 8;
@@ -397,7 +396,7 @@ module testbench;
         // #5 A = 10; B = 0; L = 4'b1010;	// Buff B
         // #5 A = 10; B = 0; L = 4'b0101;	// Neg B
 
-        #20000
+        #2000
         $finish;
     end
 endmodule
