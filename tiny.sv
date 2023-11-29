@@ -101,7 +101,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 	parameter adc 	= 	5'b01001;
 	parameter sbb 	= 	5'b01010;
 	parameter sub 	= 	5'b01011;
-	
+
 	parameter adda 	= 	add | abs;
 	parameter adca 	= 	adc | abs;
 	parameter sbba 	= 	sbb | abs;
@@ -133,7 +133,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 			ram[first] = 0;
 			ram[second] = 1;
-			ram[count] = 5;
+			ram[count] = 14;
 
 			start = org++;
 
@@ -155,7 +155,6 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 			ram[org++] = jump; ram[org++] = start - 1;
 
 			ram[finish] = 8'hff;
-
         end else begin
             if (MI == 1)
                 mem_addr_reg <= write;
@@ -262,7 +261,10 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 
 				opcode == store ? BUF_B | MI | LS:
 
-				((opcode == jump) | ((opcode == jumpz) & (psr[2] == 1))) ? GEN_0 | MI | AI:
+				((opcode == jump) |
+				((opcode == jumpz) & (psr[2] == 1)) |
+				((opcode == jumpc) & (psr[0] == 1)) |
+				((opcode == jumpn) & (psr[1] == 1))) ? GEN_0 | MI | AI:
 
 				opcode == add ? BUF_B | MI | LS:
 				opcode == addc ? BUF_B | MI | LS:
@@ -276,7 +278,10 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 
 				opcode == store ? BUF_A | RI | LS:
 
-				((opcode == jump) | ((opcode == jumpz) & (psr[2] == 1))) ? BUF_A | MI | RI | LS:
+				((opcode == jump) |
+				((opcode == jumpz) & (psr[2] == 1)) |
+				((opcode == jumpc) & (psr[0] == 1)) |
+				((opcode == jumpn) & (psr[1] == 1))) ? BUF_A | MI | RI | LS:
 				
 				opcode == add ? BUF_B | PI | AS | AI:
 				opcode == addc ? BUF_B | PI | AS | AI | Cn:
@@ -313,7 +318,7 @@ module processor #(parameter WIDTH = 16)(clk, reset, halt);
 
     input clk;
     input reset;
-	output halt;
+	output reg halt;
 
     reg [7:0] inst;
 
@@ -333,7 +338,7 @@ module processor #(parameter WIDTH = 16)(clk, reset, halt);
     assign ram_write_bus = ES ? psr_bus: alu_out_bus;
 
     sync_mux_2x1 #(WIDTH) rega_mux(clk, reset, AS, AI, ram_read_bus, ram_write_bus, accumulator_bus);
-    
+
     wire [WIDTH - 1:0] mar;
     memory #(WIDTH) ram(clk, reset, MI, RI, ram_write_bus, ram_read_bus, mar);
 
@@ -341,15 +346,20 @@ module processor #(parameter WIDTH = 16)(clk, reset, halt);
 	wire [2:0] counter;
     controlunit cu(clk, reset, inst, psr_bus, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II, decode, counter);
 
-	always @(posedge clk or negedge reset) begin
+	always @(posedge clk or posedge reset) begin
 		if (reset == 1)
 			inst <= 0;
-		else if (II == 1)
+		else if (II == 1) begin
 			inst <= ram_read_bus;
+			halt <= 0;
+		end
 	end
-	
-	assign halt = ~inst;
+
+	always @(posedge clk & inst == 2**WIDTH - 1) begin
+		halt <= 1;
+	end
 endmodule
+
 
 module testbench;
 	reg clk;
@@ -366,40 +376,16 @@ module testbench;
             #1 clk = ~clk;
             if (reset == 1 & clk)
                 reset = 0;
+			else if (halt)
+				$finish;
         end
     end
-	
-	initial begin
-		if (halt)
-			$finish;
-	end
 
     initial begin
         $dumpfile ("testbench.vcd");
         $dumpvars (0, testbench);
-        // $monitor ($time, ":\tclk=%B | reset=%B | step=%D | RAM_WRITE=%B:%D | RAM_READ=%B:%D | MAR=%B:%D | REG=%B:%D | psr=%B | decode=%B | Inst=%B", clk, reset, counter, ram_write_bus, ram_write_bus, ram_read_bus, ram_read_bus, mar, mar, accumulator_bus, accumulator_bus, psr_bus, decode, inst);
-        // $monitor ($time, ":\tclk=%B | A=%B | B=%B | C=%B", clk, a, b, c);
+
         $monitor ($time, ":\tclk=%B | reset=%B | halt=%B", clk, reset, halt);
-        // #10 MI = 1; RI = 0; ram_write_bus = 1;
-        // #20 MI = 1; RI = 0; ram_write_bus = 2;
-        // #20 MI = 0; RI = 1; ram_write_bus = 3;
-        // #20 MI = 1; ram_write_bus = 10;
-        // #20 RI = 1; ram_write_bus = 1;
-        // #20 MI = 1; ram_write_bus = 2;
-
-        // #5 s = 1; a = 100; b = 0; e = 1;
-        // #5 s = 0; b = 20;
-        // #5 s = 1; b = 1;
-        // #5 s = 1; b = 2;
-        // #5 s = 1; b = 3;
-        
-        // ram_read_bus = 0; ram
-
-        // #5 B = 8'd255; A = 0; L = 15;
-        // #5 A = 10; B = 0; L = 4'b1100;	// Buff A
-        // #5 A = 10; B = 0; L = 4'b0011;	// Neg A
-        // #5 A = 10; B = 0; L = 4'b1010;	// Buff B
-        // #5 A = 10; B = 0; L = 4'b0101;	// Neg B
 
         #2000
         $finish;
