@@ -28,8 +28,9 @@ module alu16 #(parameter WIDTH = 16) (clk, reset, A, B, E, L, LS, Cn, PI, PS, ps
 	// assign psr_wire[3] = (E[WIDTH - 1] & ~A[WIDTH - 1] & (lB[WIDTH - 1] == 0)) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1]);
 
 	always @(posedge clk or negedge reset) begin
-		if (reset == 1)
+		if (reset == 1) begin
 			psr <= 0;
+		end
 		else
 		if (PI == 1) begin
 			psr[0] <= tE[WIDTH];
@@ -67,11 +68,11 @@ module sync_mux_2x1 #(parameter WIDTH = 16) (clk, reset, sel, enable, in0, in1, 
 endmodule
 
 
-module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read);
+module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 	input clk, MI, RI;
 	input reset;
 	
-	wire [WIDTH - 1:0] mar;
+	output [WIDTH - 1:0] mar;
 	input [WIDTH - 1:0] write;
 	output [WIDTH - 1:0] read;
 	
@@ -174,16 +175,15 @@ module counter(clk, reset, clear, data);
 	
 	output reg [2:0] data;
 
-	always @(negedge clk or posedge reset or posedge clear) begin
-		if (reset == 1 || clear == 1) begin
+	always @(negedge clk or posedge reset) begin
+		if (reset == 1 || clear == 1)
 			data <= 0;
-		end else begin
+		else
 			data <= data + 1;
-		end
 	end
 endmodule
 
-module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL, cLS, cII);
+module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn, cL, cLS, cII, decode, counter);
 	// Enable Control Lines
 
 	parameter AI = 1 << 0;
@@ -196,16 +196,15 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	parameter Cn = 1 << 7;
 	parameter LS = 1 << 8;
 	parameter II = 1 << 9;
-	parameter CR = 1 << 10;
 
 	// ALU Control Lines
 
-	parameter GEN_0 = 15'b0000_00000000000 | LS;
-	parameter GEN_1 = 15'b1111_00000000000 | LS;
-	parameter BUF_A = 15'b1100_00000000000;
-	parameter NEG_A = 15'b0011_00000000000;
-	parameter BUF_B = 15'b1010_00000000000;
-	parameter NEG_B = 15'b0101_00000000000;
+	parameter GEN_0 = 14'b0000_0000000000 | LS;
+	parameter GEN_1 = 14'b1111_0000000000 | LS;
+	parameter BUF_A = 14'b1100_0000000000;
+	parameter NEG_A = 14'b0011_0000000000;
+	parameter BUF_B = 14'b1010_0000000000;
+	parameter NEG_B = 14'b0101_0000000000;
 
 	parameter load 	= 	6'b000001;
 	parameter loadi = 	6'b000001;
@@ -245,9 +244,8 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	output wire cII;
 	output wire [3:0] cL;
 
-	wire [15:0] decode;
-	wire [2:0] res_counter;
-	reg [2:0] counter;
+	output [15:0] decode;
+	output [2:0] counter;
 
 	wire TYPE_REG, TYPE_IMM, TYPE_ABS, TYPE_OFF;
 	wire [5:0] opcode;
@@ -259,13 +257,19 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 
 	assign opcode = inst[5:0];
 
-	always @(negedge clk or posedge reset or posedge (decode == 0)) begin
-		if (reset == 1 || decode == 0) begin
-			counter <= 0;
-		end else begin
-			counter <= counter + 1;
-		end
-	end
+	// always @(negedge clk or posedge reset) begin
+	// 	if (reset == 1) begin
+	// 		counter <= 0;
+	// 	end else begin
+	// 		counter <= counter + 1;
+	// 	end
+	// end
+	
+	// always @(decode == 0) begin
+	// 	counter <= 0;
+	// end
+	
+	counter count(clk, reset, (decode == 0), counter);
 	
 	assign decode =
 		counter == 0 ? GEN_0 | MI:
@@ -307,7 +311,7 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 				((opcode == jumpz) & (psr[2] == 1)) |
 				((opcode == jumpc) & (psr[0] == 1)) |
 				((opcode == jumpn) & (psr[1] == 1))) ? BUF_A | MI | RI | LS:
-
+				
 				opcode == add ? BUF_B | PI | AS | AI:
 				opcode == addc ? BUF_B | PI | AS | AI | Cn:
 				opcode == subb ? NEG_B | PI | AS | AI:
@@ -327,30 +331,11 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	assign cCn = decode[7];
 	assign cLS = decode[8];
 	assign cII = decode[9];
-	// assign res_counter = decode[10];
-	assign cL = decode[15:11];
+	assign cL = decode[14:10];
 endmodule
 
-// module instructionregister(clk, reset, hlt, inst);
-// 	// input clk;
-// 	// input reset;
-
-// 	// output hlt;
-// 	// output reg inst;
-	
-// 	// always @(posedge clk or posedge reset) begin
-// 	// 	if (inst == 2**WIDTH - 1)
-// 	// 		halt <= 1;
-// 	// 	else if (reset == 1)
-// 	// 		inst <= 0;
-// 	// 	else if (II == 1) begin
-// 	// 		inst <= ram_read_bus;
-// 	// 		halt <= 0;
-// 	// 	end
-// 	// end
-// endmodule
-
 module processor #(parameter WIDTH = 16)(clk, reset, halt);
+	wire [WIDTH - 1:0] mem_input_bus;
 	wire [WIDTH - 1:0] accumulator_bus;
 	wire [WIDTH - 1:0] ram_read_bus;
 	wire [WIDTH - 1:0] ram_write_bus;
@@ -362,7 +347,7 @@ module processor #(parameter WIDTH = 16)(clk, reset, halt);
 	output reg halt;
 
 	reg [7:0] inst;
-	
+
 	wire AI, AS;
 	wire PI, PS;
 	wire MI, RI;
@@ -371,28 +356,33 @@ module processor #(parameter WIDTH = 16)(clk, reset, halt);
 	wire LS;
 	wire II;
 	wire [3:0] L;
-	
+
 	alu16 #(WIDTH) alu (clk, reset, accumulator_bus, ram_read_bus, alu_out_bus, L, LS, C_in, PI, PS, psr_bus);
-	
+
 	// ES == 0 -> ALU
 	// ES == 1 -> PSR
 	assign ram_write_bus = ES ? psr_bus: alu_out_bus;
-	
+
 	sync_mux_2x1 #(WIDTH) rega_mux(clk, reset, AS, AI, ram_read_bus, ram_write_bus, accumulator_bus);
-	
-	memory #(WIDTH) ram(clk, reset, MI, RI, ram_write_bus, ram_read_bus);
-	
-	controlunit cu(clk, reset, inst, psr_bus, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II);
-	
+
+	wire [WIDTH - 1:0] mar;
+	memory #(WIDTH) ram(clk, reset, MI, RI, ram_write_bus, ram_read_bus, mar);
+
+	wire [15:0] decode;
+	wire [2:0] counter;
+	controlunit cu(clk, reset, inst, psr_bus, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II, decode, counter);
+
 	always @(posedge clk or posedge reset) begin
-		if (inst == 2**WIDTH - 1)
-			halt <= 1;
-		else if (reset == 1)
+		if (reset == 1)
 			inst <= 0;
 		else if (II == 1) begin
 			inst <= ram_read_bus;
 			halt <= 0;
 		end
+	end
+
+	always @(posedge clk & inst == 2**WIDTH - 1) begin
+		halt <= 1;
 	end
 endmodule
 

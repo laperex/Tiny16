@@ -1,207 +1,30 @@
 [*]
 [*] GTKWave Analyzer v3.3.117 (w)1999-2023 BSI
-[*] Wed Nov 29 16:58:44 2023
+[*] Sun Dec 17 11:25:16 2023
 [*]
 [dumpfile] "/home/laperex/Programming/C++/Verilog/tiny/testbench.vcd"
-[dumpfile_mtime] "Tue Nov 28 03:31:54 2023"
-[dumpfile_size] 147585
+[dumpfile_mtime] "Sun Dec 17 11:24:22 2023"
+[dumpfile_size] 90375
 [savefile] "/home/laperex/Programming/C++/Verilog/tiny/wave.gtkw"
 [timestart] 0
-[size] 2532 1485
-[pos] -1276 -776
-*-7.573809 1186 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[size] 2536 1491
+[pos] -1 -1
+*-6.573809 145 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] testbench.
 [sst_width] 311
 [signals_width] 401
 [sst_expanded] 1
 [sst_vpaned_height] 1060
 @28
+testbench.tiny.cu.reset
+testbench.tiny.halt
 testbench.clk
-testbench.tiny.AI
-testbench.tiny.AS
-testbench.tiny.C_in
-testbench.tiny.ES
-testbench.tiny.II
-testbench.tiny.LS
-@22
-testbench.tiny.L[3:0]
-@28
-testbench.tiny.MI
-testbench.tiny.PI
-testbench.tiny.PS
-testbench.tiny.RI
-@420
-testbench.tiny.WIDTH
-@22
-testbench.tiny.accumulator_bus[7:0]
-testbench.tiny.alu.A[7:0]
-testbench.tiny.alu.B[7:0]
-@28
-testbench.tiny.alu.Cn
-@22
-testbench.tiny.alu.E[7:0]
-@28
-testbench.tiny.alu.LS
-@22
-testbench.tiny.alu.L[3:0]
-@28
-testbench.tiny.alu.PI
-testbench.tiny.alu.PS
-@420
-testbench.tiny.alu.WIDTH
-@28
-testbench.tiny.alu.clk
-@420
-testbench.tiny.alu.genblk1[0].i
-testbench.tiny.alu.genblk1[1].i
-testbench.tiny.alu.genblk1[2].i
-testbench.tiny.alu.genblk1[3].i
-testbench.tiny.alu.genblk1[4].i
-testbench.tiny.alu.genblk1[5].i
-testbench.tiny.alu.genblk1[6].i
-testbench.tiny.alu.genblk1[7].i
-@22
-testbench.tiny.alu.lA[7:0]
-testbench.tiny.alu.lB[7:0]
-testbench.tiny.alu.psr[3:0]
-@28
-testbench.tiny.alu.reset
-@22
-testbench.tiny.alu.tE[8:0]
-testbench.tiny.alu_out_bus[7:0]
-@28
-testbench.tiny.clk
-testbench.tiny.counter[2:0]
-@420
-testbench.tiny.cu.AI
-testbench.tiny.cu.AS
-testbench.tiny.cu.BUF_A
-testbench.tiny.cu.BUF_B
-testbench.tiny.cu.Cn
-testbench.tiny.cu.ES
-testbench.tiny.cu.GEN_0
-testbench.tiny.cu.GEN_1
-testbench.tiny.cu.II
-testbench.tiny.cu.LS
-testbench.tiny.cu.MI
-testbench.tiny.cu.NEG_A
-testbench.tiny.cu.NEG_B
-testbench.tiny.cu.PI
-testbench.tiny.cu.PS
-testbench.tiny.cu.RI
-@28
-testbench.tiny.cu.TYPE_ABS
-testbench.tiny.cu.TYPE_IMM
-testbench.tiny.cu.TYPE_OFF
-testbench.tiny.cu.TYPE_REG
-@420
-testbench.tiny.cu.add
-testbench.tiny.cu.addc
-@28
-testbench.tiny.cu.cAI
-testbench.tiny.cu.cAS
-testbench.tiny.cu.cCn
-testbench.tiny.cu.cES
-testbench.tiny.cu.cII
-testbench.tiny.cu.cLS
-@22
-testbench.tiny.cu.cL[3:0]
-@28
-testbench.tiny.cu.cMI
-testbench.tiny.cu.cPI
-testbench.tiny.cu.cPS
-testbench.tiny.cu.cRI
-testbench.tiny.cu.clk
+@24
 testbench.tiny.cu.counter[2:0]
 @22
 testbench.tiny.cu.decode[15:0]
 testbench.tiny.cu.inst[7:0]
-@420
-testbench.tiny.cu.jump
-testbench.tiny.cu.jumpc
-testbench.tiny.cu.jumpn
-testbench.tiny.cu.jumpz
-testbench.tiny.cu.load
-testbench.tiny.cu.loadi
-@22
-testbench.tiny.cu.opcode[5:0]
-testbench.tiny.cu.psr[3:0]
-@28
-testbench.tiny.cu.reset
-@420
-testbench.tiny.cu.store
-testbench.tiny.cu.sub
-testbench.tiny.cu.subb
-@22
-testbench.tiny.decode[15:0]
-@28
-testbench.tiny.halt
-@22
-testbench.tiny.inst[7:0]
-testbench.tiny.mar[7:0]
-testbench.tiny.psr_bus[3:0]
-@28
-testbench.tiny.ram.MI
-testbench.tiny.ram.RI
-@420
-testbench.tiny.ram.WIDTH
-testbench.tiny.ram.abs
-testbench.tiny.ram.adc
-testbench.tiny.ram.adca
-testbench.tiny.ram.add
-testbench.tiny.ram.adda
-@28
-testbench.tiny.ram.clk
-@420
-testbench.tiny.ram.count
-@25
+@24
 testbench.tiny.ram.display[7:0]
-@420
-testbench.tiny.ram.finish
-testbench.tiny.ram.first
-testbench.tiny.ram.i
-testbench.tiny.ram.imm
-testbench.tiny.ram.jump
-testbench.tiny.ram.jumpc
-testbench.tiny.ram.jumpn
-testbench.tiny.ram.jumpz
-testbench.tiny.ram.loada
-testbench.tiny.ram.loadi
-@22
-testbench.tiny.ram.mar[7:0]
-testbench.tiny.ram.mem_addr_reg[7:0]
-@420
-testbench.tiny.ram.off
-testbench.tiny.ram.org
-@22
-testbench.tiny.ram.read[7:0]
-@28
-testbench.tiny.ram.reset
-@420
-testbench.tiny.ram.sbb
-testbench.tiny.ram.sbba
-testbench.tiny.ram.second
-testbench.tiny.ram.start
-testbench.tiny.ram.store
-testbench.tiny.ram.sub
-testbench.tiny.ram.suba
-testbench.tiny.ram.tmp
-@22
-testbench.tiny.ram.write[7:0]
-testbench.tiny.ram_read_bus[7:0]
-testbench.tiny.ram_write_bus[7:0]
-@420
-testbench.tiny.rega_mux.WIDTH
-@28
-testbench.tiny.rega_mux.clk
-testbench.tiny.rega_mux.enable
-@22
-testbench.tiny.rega_mux.in0[7:0]
-testbench.tiny.rega_mux.in1[7:0]
-testbench.tiny.rega_mux.out[7:0]
-@28
-testbench.tiny.rega_mux.reset
-testbench.tiny.rega_mux.sel
-testbench.tiny.reset
 [pattern_trace] 1
 [pattern_trace] 0
