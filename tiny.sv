@@ -133,7 +133,7 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read, mar);
 
 			ram[first] = 0;
 			ram[second] = 1;
-			ram[count] = 5;
+			ram[count] = 7;
 
 			start = org++;
 
@@ -206,6 +206,15 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	parameter addc 	= 	6'b100001;
 	parameter subb 	= 	6'b100010;
 	parameter sub 	= 	6'b100011;
+	
+	parameter logic_nand = 	6'b010100;
+	parameter logic_and = 	6'b010101;
+	
+	parameter logic_nor = 	6'b010110;
+	parameter logic_or = 	6'b010111;
+	
+	parameter logic_xnor = 	6'b011000;
+	parameter logic_xor = 	6'b011001;
 
 	input clk;
 	input reset;
