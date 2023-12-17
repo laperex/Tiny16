@@ -15,17 +15,16 @@ module alu16 #(parameter WIDTH = 16) (clk, reset, A, B, E, L, LS, Cn, PI, PS, ps
 	wire [WIDTH - 1:0] lA;
 	wire [WIDTH - 1:0] lB;
 	wire [WIDTH:0] tE;
-
+	
+	assign lA = LS ? 0: A;
+	assign tE = { 1'b0, lA } + { 1'b0, lB } + (1 & Cn);
+	assign E = tE[WIDTH - 1:0];
+	// assign psr_wire[3] = (E[WIDTH - 1] & ~A[WIDTH - 1] & (lB[WIDTH - 1] == 0)) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1]);
+	
 	genvar i;
 
 	for (i = 0; i < WIDTH; i = i + 1)
 		assign lB[i] = A[i] ? (B[i] ? L[3] : L[2]) : (B[i] ? L[1] : L[0]);
-
-	assign lA = LS ? 0: A;
-	assign tE = { 1'b0, lA } + { 1'b0, lB } + (1 & Cn);
-	assign E = tE[WIDTH - 1:0];
-
-	// assign psr_wire[3] = (E[WIDTH - 1] & ~A[WIDTH - 1] & (lB[WIDTH - 1] == 0)) | (~E[WIDTH - 1] & A[WIDTH - 1] & lB[WIDTH - 1]);
 
 	always @(posedge clk or negedge reset) begin
 		if (reset == 1)
@@ -68,20 +67,6 @@ endmodule
 
 
 module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read);
-	input clk, MI, RI;
-	input reset;
-	
-	wire [WIDTH - 1:0] mar;
-	input [WIDTH - 1:0] write;
-	output [WIDTH - 1:0] read;
-	
-	reg [WIDTH - 1:0] mem_addr_reg;
-	reg [WIDTH - 1:0] ram [2**WIDTH - 1:0];
-	
-	integer i;
-
-	assign mar = mem_addr_reg;
-	
 	parameter imm = 0 << 6;
 	parameter abs = 1 << 6;
 	parameter off = 2 << 6;
@@ -105,16 +90,30 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read);
 	parameter adca 	= 	adc | abs;
 	parameter sbba 	= 	sbb | abs;
 	parameter suba 	= 	sub | abs;
-		
+
 	parameter tmp = 10;
 	parameter first = 11;
 	parameter second = 12;
 	parameter count = 13;
+	
+	input clk, MI, RI;
+	input reset;
+	input [WIDTH - 1:0] write;
+	
+	output [WIDTH - 1:0] read;
+	
+	reg [WIDTH - 1:0] mem_addr_reg;
+	reg [WIDTH - 1:0] ram [2**WIDTH - 1:0];
+	
+	wire [WIDTH - 1:0] mar;
+	wire [WIDTH - 1:0] display;
 
 	integer org, start, finish;
-
-	wire [WIDTH - 1:0] display;
+	integer i;
 	
+	assign mar = mem_addr_reg;
+	assign read = ram[mem_addr_reg];
+	assign display = ram[first];
 
 	always @(posedge clk or posedge reset) begin
 		if (reset == 1) begin
@@ -162,9 +161,6 @@ module memory #(parameter WIDTH = 16) (clk, reset, MI, RI, write, read);
 				ram[mem_addr_reg] <= write;
 		end
 	end
-
-	assign read = ram[mem_addr_reg];
-	assign display = ram[first];
 endmodule
 
 module counter(clk, reset, clear, data);
@@ -236,19 +232,19 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	input [7:0] inst;
 	input [3:0] psr;
 
-	output wire cAI, cAS;
-	output wire cPI, cPS;
-	output wire cMI, cRI;
-	output wire cES;
-	output wire cCn;
-	output wire cLS;
-	output wire cII;
-	output wire [3:0] cL;
+	output cAI, cAS;
+	output cPI, cPS;
+	output cMI, cRI;
+	output cES;
+	output cCn;
+	output cLS;
+	output cII;
+	output [3:0] cL;
 
+	reg [2:0] counter;
+	
 	wire [15:0] decode;
 	wire [2:0] res_counter;
-	reg [2:0] counter;
-
 	wire TYPE_REG, TYPE_IMM, TYPE_ABS, TYPE_OFF;
 	wire [5:0] opcode;
 
@@ -258,6 +254,19 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 	assign TYPE_REG = inst[7] & inst[6];	// 3
 
 	assign opcode = inst[5:0];
+	
+	assign cAI = decode[0];
+	assign cAS = decode[1];
+	assign cPI = decode[2];
+	assign cPS = decode[3];
+	assign cMI = decode[4];
+	assign cRI = decode[5];
+	assign cES = decode[6];
+	assign cCn = decode[7];
+	assign cLS = decode[8];
+	assign cII = decode[9];
+	// assign res_counter = decode[10];
+	assign cL = decode[15:11];
 
 	always @(negedge clk or posedge reset or posedge (decode == 0)) begin
 		if (reset == 1 || decode == 0) begin
@@ -315,53 +324,41 @@ module controlunit(clk, reset, inst, psr, cAI, cAS, cPI, cPS, cMI, cRI, cES, cCn
 				0:
 			0:
 		0;
-	
-
-	assign cAI = decode[0];
-	assign cAS = decode[1];
-	assign cPI = decode[2];
-	assign cPS = decode[3];
-	assign cMI = decode[4];
-	assign cRI = decode[5];
-	assign cES = decode[6];
-	assign cCn = decode[7];
-	assign cLS = decode[8];
-	assign cII = decode[9];
-	// assign res_counter = decode[10];
-	assign cL = decode[15:11];
 endmodule
 
-// module instructionregister(clk, reset, hlt, inst);
-// 	// input clk;
-// 	// input reset;
+module instructionregister #(parameter WIDTH = 16) (clk, reset, halt, enable, data_in, inst);
+	input clk;
+	input reset;
+	input enable;
+	input [WIDTH - 1:0] data_in;
 
-// 	// output hlt;
-// 	// output reg inst;
+	output reg halt;
+	output reg [7:0] inst;
 	
-// 	// always @(posedge clk or posedge reset) begin
-// 	// 	if (inst == 2**WIDTH - 1)
-// 	// 		halt <= 1;
-// 	// 	else if (reset == 1)
-// 	// 		inst <= 0;
-// 	// 	else if (II == 1) begin
-// 	// 		inst <= ram_read_bus;
-// 	// 		halt <= 0;
-// 	// 	end
-// 	// end
-// endmodule
+	always @(posedge clk or posedge reset) begin
+		if (inst == 2**WIDTH - 1)
+			halt <= 1;
+		else if (reset == 1)
+			inst <= 0;
+		else if (enable == 1) begin
+			inst <= data_in;
+			halt <= 0;
+		end
+	end
+endmodule
 
 module processor #(parameter WIDTH = 16)(clk, reset, halt);
+	input clk;
+	input reset;
+
+	output halt;
+	
 	wire [WIDTH - 1:0] accumulator_bus;
 	wire [WIDTH - 1:0] ram_read_bus;
 	wire [WIDTH - 1:0] ram_write_bus;
 	wire [WIDTH - 1:0] alu_out_bus;
 	wire [3:0] psr_bus;
-
-	input clk;
-	input reset;
-	output reg halt;
-
-	reg [7:0] inst;
+	wire [7:0] inst;
 	
 	wire AI, AS;
 	wire PI, PS;
@@ -383,23 +380,15 @@ module processor #(parameter WIDTH = 16)(clk, reset, halt);
 	memory #(WIDTH) ram(clk, reset, MI, RI, ram_write_bus, ram_read_bus);
 	
 	controlunit cu(clk, reset, inst, psr_bus, AI, AS, PI, PS, MI, RI, ES, C_in, L, LS, II);
-	
-	always @(posedge clk or posedge reset) begin
-		if (inst == 2**WIDTH - 1)
-			halt <= 1;
-		else if (reset == 1)
-			inst <= 0;
-		else if (II == 1) begin
-			inst <= ram_read_bus;
-			halt <= 0;
-		end
-	end
+
+	instructionregister #(WIDTH) ir(clk, reset, halt, II, ram_read_bus, inst);
 endmodule
 
 
 module testbench;
 	reg clk;
 	reg reset;
+
 	wire halt;
 
 	processor #(8) tiny(clk, reset, halt);

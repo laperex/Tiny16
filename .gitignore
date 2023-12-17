@@ -1,0 +1,9 @@
+/.vscode
+/.vs
+/build
+/out
+/.cache
+/*.bak
+/*.out
+/*.gtkw
+/*.vcd
